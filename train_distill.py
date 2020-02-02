@@ -32,7 +32,7 @@ exp_name = 'VideoSaliency' + '_' + time_str
 args = {
     'basic_model': 'resnet50',
     'motion': '',
-    'seq': False,
+    'seq': True,
     'se_layer': False,
     'dilation': True,
     'distillation': False,
