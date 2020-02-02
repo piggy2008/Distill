@@ -163,13 +163,15 @@ def train(net, optimizer):
                 if curr_iter % 3 == 0:
                     previous_frame1, previous_frame2 = torch.chunk(previous_frame, 2, 0)
                     current_frame1, current_frame2 = torch.chunk(current_frame, 2, 0)
-
+                    next_frame1,next_frame2 = torch.chunk(next_frame, 2, 0)
+                    
                     previous_gt1, previous_gt2 = torch.chunk(previous_gt, 2, 0)
                     current_gt1, current_gt2 = torch.chunk(current_gt, 2, 0)
+                    next_gt1, next_gt2 = torch.chunk(next_gt, 2, 0)
                     if random.uniform(0, 1) > 0.5:
-                        train_seq(net, previous_frame1, previous_gt1, current_frame1, current_gt1, optimizer, criterion, curr_iter)
+                        train_seq(net, previous_frame1, previous_gt1, current_frame1, current_gt1, next_frame1, next_gt1, optimizer, criterion, curr_iter)
                     else:
-                        train_seq(net, previous_frame2, previous_gt2, current_frame2, current_gt2, optimizer, criterion, curr_iter)
+                        train_seq(net, previous_frame2, previous_gt2, current_frame2, current_gt2, next_frame2, next_gt2, optimizer, criterion, curr_iter)
                 else:
                     # first, second = torch.chunk(inputs, 2, 0)
                     # first_gt, second_gt = torch.chunk(labels, 2, 0)
@@ -199,7 +201,7 @@ def train_single(net, inputs, labels, criterion, optimizer, curr_iter):
     labels = Variable(labels).cuda()
 
     optimizer.zero_grad()
-    outputs0 = net(inputs, inputs, flag='single')
+    outputs0 = net(inputs, inputs, inputs, flag='single')
     loss0 = criterion(outputs0, labels)
     # loss1 = criterion(outputs1, labels)
     # loss2 = criterion(outputs2, labels)
@@ -213,59 +215,29 @@ def train_single(net, inputs, labels, criterion, optimizer, curr_iter):
 
     return
 
-def train_seq(net, previous_frame, previous_gt, current_frame, current_gt, optimizer, criterion, curr_iter):
+def train_seq(net, previous_frame, previous_gt, current_frame, current_gt, next_frame, next_gt, optimizer, criterion, curr_iter):
     previous_gt = Variable(previous_gt).cuda()
     current_gt = Variable(current_gt).cuda()
+    next_gt = Variable(next_gt).cuda()
 
     previous_frame = Variable(previous_frame).cuda()
     current_frame = Variable(current_frame).cuda()
+    next_frame = Variable(next_frame).cuda()
 
     optimizer.zero_grad()
+    
+    predict1_pre, predict1_cur, predict1_next = net(previous_frame, current_frame, next_frame, 'seq')
 
-    predict0_pre, predict0_cur, predict1_pre, predict1_cur, predict2_pre, \
-    predict2_cur, predict3_pre, predict3_cur = net(previous_frame, current_frame, 'seq')
-    loss0_pre = criterion(predict0_pre, previous_gt)
     loss1_pre = criterion(predict1_pre, previous_gt)
-    loss2_pre = criterion(predict2_pre, previous_gt)
-    loss3_pre = criterion(predict3_pre, previous_gt)
-
-    loss0_pre_cur = criterion(predict0_pre, F.sigmoid(predict2_cur))
-    loss1_pre_cur = criterion(predict1_pre, F.sigmoid(predict2_cur))
-    loss2_pre_cur = criterion(predict2_pre, F.sigmoid(predict2_cur))
-    # loss3_pre_cur = criterion(predict3_pre, F.sigmoid(predict2_cur))
-
-    loss0_cur = criterion(predict0_cur, current_gt)
     loss1_cur = criterion(predict1_cur, current_gt)
-    loss2_cur = criterion(predict2_cur, current_gt)
-    loss3_cur = criterion(predict2_cur, current_gt)
+    loss1_next = criterion(predict1_next, next_gt)
 
-    loss0_cur_pre = criterion(predict0_cur, F.sigmoid(predict2_pre))
-    loss1_cur_pre = criterion(predict1_cur, F.sigmoid(predict2_pre))
-
-
-    loss0_pre = loss0_pre + 0.3 * loss0_pre_cur
-    loss1_pre = loss1_pre + 0.3 * loss1_pre_cur
-    loss2_pre = loss2_pre + 0.3 * loss2_pre_cur
-    loss3_pre = loss3_pre
-
-    total_loss_pre = loss0_pre + loss1_pre + loss2_pre + loss3_pre
-
-    loss0_cur = loss0_cur + 0.3 * loss0_cur_pre
-    loss1_cur = loss1_cur + 0.3 * loss1_cur_pre
-    loss2_cur = loss2_cur
-    loss3_cur = loss3_cur
-
-    total_loss_cur = loss0_cur + loss1_cur + loss2_cur + loss3_cur
-
-    total_loss = total_loss_pre + total_loss_cur
+    total_loss = loss1_pre + loss1_cur + loss1_next
     total_loss.backward()
     optimizer.step()
 
-    print_log(total_loss, loss1_pre, loss2_pre, loss3_pre, args['train_batch_size'], curr_iter,
-              optimizer, 'previous')
-
-    print_log(total_loss, loss1_cur, loss2_cur, loss3_cur, args['train_batch_size'], curr_iter,
-              optimizer, 'current')
+    print_log(total_loss, loss1_pre, loss1_cur, loss1_next, args['train_batch_size'], curr_iter,
+              optimizer, 'seq')
 
     return
 
