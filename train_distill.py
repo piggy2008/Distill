@@ -20,7 +20,7 @@ from utils_mine import load_part_of_model
 import random
 
 cudnn.benchmark = True
-device_id = 3
+device_id = 2
 torch.manual_seed(2019)
 torch.cuda.set_device(device_id)
 
@@ -32,14 +32,15 @@ exp_name = 'VideoSaliency' + '_' + time_str
 args = {
     'basic_model': 'resnet50',
     'motion': '',
+    'seq': False,
     'se_layer': False,
-    'dilation': False,
-    'distillation': True,
+    'dilation': True,
+    'distillation': False,
     'L2': False,
     'KL': False,
     'iter_num': 80000,
     'iter_save': 10000,
-    'iter_start_seq': 0,
+    'iter_start_seq': 100000,
     'train_batch_size': 8,
     'last_iter': 0,
     'lr': 1e-3,
@@ -47,8 +48,8 @@ args = {
     'weight_decay': 5e-4,
     'momentum': 0.95,
     'snapshot': '',
-    'pretrain': os.path.join(ckpt_path, 'VideoSaliency_2019-12-24 22:05:11', '50000.pth'),
-    # 'pretrain': '',
+    # 'pretrain': os.path.join(ckpt_path, 'VideoSaliency_2019-12-24 22:05:11', '50000.pth'),
+    'pretrain': '',
     'imgs_file': 'Pre-train/pretrain_all_seq_DUT_TR_DAFB2_DAVSOD2.txt',
     # 'imgs_file': 'video_saliency/train_all_DAFB2_DAVSOD_5f.txt',
     'train_loader': 'both'
@@ -111,7 +112,7 @@ def fix_parameters(parameters):
 
 
 def main():
-    net = Distill(basic_model=args['basic_model'], seq=True).cuda().train()
+    net = Distill(basic_model=args['basic_model'], seq=args['seq'], dilation=args['dilation']).cuda().train()
 
     # fix_parameters(net.named_parameters())
     optimizer = optim.SGD([
@@ -198,22 +199,17 @@ def train_single(net, inputs, labels, criterion, optimizer, curr_iter):
     labels = Variable(labels).cuda()
 
     optimizer.zero_grad()
-    outputs0, outputs1, outputs2, feat_high, _ = net(inputs, inputs, flag='single')
+    outputs0 = net(inputs, inputs, flag='single')
     loss0 = criterion(outputs0, labels)
-    loss1 = criterion(outputs1, labels)
-    loss2 = criterion(outputs2, labels)
-    if args['distillation']:
-        loss02 = criterion(outputs0, F.sigmoid(outputs2))
-        loss12 = criterion(outputs1, F.sigmoid(outputs2))
+    # loss1 = criterion(outputs1, labels)
+    # loss2 = criterion(outputs2, labels)
 
-        total_loss = loss0 + loss1 + loss2 + 0.5 * loss02 + 0.5 * loss12
-    else:
-        total_loss = loss0 + loss1 + loss2
+    total_loss = loss0
 
     total_loss.backward()
     optimizer.step()
 
-    print_log(total_loss, loss0, loss1, loss2, args['train_batch_size'], curr_iter, optimizer)
+    print_log(total_loss, loss0, loss0, loss0, args['train_batch_size'], curr_iter, optimizer)
 
     return
 

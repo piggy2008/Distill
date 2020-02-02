@@ -33,54 +33,17 @@ class R3Net(nn.Module):
         self.layer3 = resnext.layer3
         self.layer4 = resnext.layer4
 
-        self.reduce_low = nn.Sequential(
-            nn.Conv2d(64 + 256 + 512, 256, kernel_size=3, padding=1), nn.BatchNorm2d(256), nn.PReLU(),
-            nn.Conv2d(256, 256, kernel_size=3, padding=1), nn.BatchNorm2d(256), nn.PReLU(),
-            nn.Conv2d(256, 256, kernel_size=1), nn.BatchNorm2d(256), nn.PReLU()
-        )
+        # self.reduce_low = nn.Sequential(
+        #     nn.Conv2d(64 + 256 + 512, 256, kernel_size=3, padding=1), nn.BatchNorm2d(256), nn.PReLU(),
+        #     nn.Conv2d(256, 256, kernel_size=3, padding=1), nn.BatchNorm2d(256), nn.PReLU(),
+        #     nn.Conv2d(256, 256, kernel_size=1), nn.BatchNorm2d(256), nn.PReLU()
+        # )
         self.reduce_high = nn.Sequential(
             nn.Conv2d(1024 + 2048, 256, kernel_size=3, padding=1), nn.BatchNorm2d(256), nn.PReLU(),
             nn.Conv2d(256, 256, kernel_size=3, padding=1), nn.BatchNorm2d(256), nn.PReLU(),
             _ASPP(256)
         )
-        if self.motion == 'GRU':
-            self.reduce_low_GRU = ConvGRU(input_size=(119, 119), input_dim=256,
-                                     hidden_dim=256,
-                                     kernel_size=(3, 3),
-                                     num_layers=1,
-                                     batch_first=True,
-                                     bias=True,
-                                     return_all_layers=False)
 
-            self.reduce_high_GRU = ConvGRU(input_size=(119, 119), input_dim=256,
-                                          hidden_dim=256,
-                                          kernel_size=(3, 3),
-                                          num_layers=1,
-                                          batch_first=True,
-                                          bias=True,
-                                          return_all_layers=False)
-            # self.motion_predict = nn.Conv2d(256, 1, kernel_size=1)
-
-        elif self.motion == 'LSTM':
-            # self.reduce_low_GRU = ConvLSTM(input_size=(119, 119), input_dim=256,
-            #                               hidden_dim=256,
-            #                               kernel_size=(3, 3),
-            #                               num_layers=1,
-            #                               padding=1,
-            #                               dilation=1,
-            #                               batch_first=True,
-            #                               bias=True,
-            #                               return_all_layers=False)
-
-            self.reduce_high_GRU = ConvLSTM(input_size=(119, 119), input_dim=256,
-                                           hidden_dim=256,
-                                           kernel_size=(3, 3),
-                                           num_layers=1,
-                                           padding=1,
-                                           dilation=1,
-                                           batch_first=True,
-                                           bias=True,
-                                           return_all_layers=False)
             # self.motion_predict = nn.Conv2d(256, 1, kernel_size=1)
 
         if self.se_layer:
@@ -119,17 +82,17 @@ class R3Net(nn.Module):
         layer4 = self.layer4(layer3)
 
         l0_size = layer0.size()[2:]
-        reduce_low = self.reduce_low(torch.cat((
-            layer0,
-            F.upsample(layer1, size=l0_size, mode='bilinear', align_corners=True),
-            F.upsample(layer2, size=l0_size, mode='bilinear', align_corners=True)), 1))
+        # reduce_low = self.reduce_low(torch.cat((
+        #     layer0,
+        #     F.upsample(layer1, size=l0_size, mode='bilinear', align_corners=True),
+        #     F.upsample(layer2, size=l0_size, mode='bilinear', align_corners=True)), 1))
         reduce_high = self.reduce_high(torch.cat((
             layer3,
             F.upsample(layer4, size=layer3.size()[2:], mode='bilinear', align_corners=True)), 1))
 
 
 
-        return reduce_high, reduce_low
+        return reduce_high
 
 
 class _ASPP(nn.Module):
@@ -166,22 +129,22 @@ class _ASPP(nn.Module):
         return self.fuse(torch.cat((conv1, conv2, conv3, conv4, conv5), 1))
 
 class Distill(nn.Module):
-    def __init__(self, basic_model='resnet50', seq=False):
+    def __init__(self, basic_model='resnet50', seq=False, dilation=False):
         super(Distill, self).__init__()
-        self.head = R3Net(motion='', se_layer=False, dilation=False, basic_model=basic_model)
+        self.head = R3Net(motion='', se_layer=False, dilation=dilation, basic_model=basic_model)
         # self.relation = STA2_Module(512, 256)
 
         self.predict0 = nn.Conv2d(256, 1, kernel_size=1)
-        self.predict1 = nn.Sequential(
-            nn.Conv2d(257, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
-            nn.Conv2d(128, 1, kernel_size=1)
-        )
-        self.predict2 = nn.Sequential(
-            nn.Conv2d(257, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
-            nn.Conv2d(128, 1, kernel_size=1)
-        )
+        # self.predict1 = nn.Sequential(
+        #     nn.Conv2d(257, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
+        #     nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
+        #     nn.Conv2d(128, 1, kernel_size=1)
+        # )
+        # self.predict2 = nn.Sequential(
+        #     nn.Conv2d(257, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
+        #     nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
+        #     nn.Conv2d(128, 1, kernel_size=1)
+        # )
         # self.predict3 = nn.Sequential(
         #     nn.Conv2d(257, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
         #     nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
@@ -204,75 +167,23 @@ class Distill(nn.Module):
     def forward(self, pre, cur, flag='single'):
 
         if flag == 'single':
-            feat_high_cur, feat_low_cur = self.head(cur)
+            feat_high_cur = self.head(cur)
 
             # feat_high_cur = self.relation(feat_high_cur, feat_high_cur)
-            feat_high_cur = F.upsample(feat_high_cur, size=feat_low_cur.size()[2:], mode='bilinear', align_corners=True)
+            # feat_high_cur = F.upsample(feat_high_cur, size=feat_low_cur.size()[2:], mode='bilinear', align_corners=True)
 
             predict0 = self.predict0(feat_high_cur)
-            predict1 = self.predict1(torch.cat((predict0, feat_low_cur), 1)) + predict0
-            predict2 = self.predict2(torch.cat((predict1, feat_high_cur), 1)) + predict1
+            # predict1 = self.predict1(torch.cat((predict0, feat_low_cur), 1)) + predict0
+            # predict2 = self.predict2(torch.cat((predict1, feat_high_cur), 1)) + predict1
             # predict3 = self.predict3(torch.cat((predict2, feat_low_cur), 1)) + predict2
 
             predict0 = F.upsample(predict0, size=cur.size()[2:], mode='bilinear', align_corners=True)
-            predict1 = F.upsample(predict1, size=cur.size()[2:], mode='bilinear', align_corners=True)
-            predict2 = F.upsample(predict2, size=cur.size()[2:], mode='bilinear', align_corners=True)
+            # predict1 = F.upsample(predict1, size=cur.size()[2:], mode='bilinear', align_corners=True)
+            # predict2 = F.upsample(predict2, size=cur.size()[2:], mode='bilinear', align_corners=True)
             # predict3 = F.upsample(predict3, size=cur.size()[2:], mode='bilinear', align_corners=True)
 
             if self.training:
-                return predict0, predict1, predict2, feat_high_cur, feat_low_cur
+                return predict0
             else:
-                return F.sigmoid(predict0), F.sigmoid(predict1), F.sigmoid(predict2), feat_high_cur
-        else:
-            feat_high_pre, feat_low_pre = self.head(pre)
-            feat_high_cur, feat_low_cur = self.head(cur)
+                return F.sigmoid(predict0)
 
-
-            ####
-            b, c, h, w = feat_high_cur.size()
-            feat_high_pre_a = feat_high_pre.view(b, c, h * w).permute(0, 2, 1)
-            feat_high_cur_a = feat_high_cur.view(b, c, h * w)
-
-            feat = torch.matmul(feat_high_pre_a, feat_high_cur_a)
-            feat = F.softmax((c ** -.5) * feat, dim=-1)
-            feat = torch.matmul(feat, feat_high_cur_a.permute(0, 2, 1)).permute(0, 2, 1)
-            feat_high_mutual = torch.cat([feat, feat_high_cur_a], dim=1).view(b, 2 * c, h, w)
-
-            # feat_high_mutual = torch.cat([feat_high_pre, feat_high_cur], dim=1)
-            # feat_high_mutual = feat.view(b, c, h, w)
-            # feat_high_mutual = feat_high_pre * feat_high_cur
-            feat_high_mutual = self.mutual(feat_high_mutual)
-            # feat_high_mutual = feat_high_cur + feat_high_pre
-            ####
-
-            # feat_high_pre = self.relation(feat_high_pre, feat_high_pre)
-            # feat_high_cur = self.relation(feat_high_cur, feat_high_cur)
-
-            feat_high_cur = F.upsample(feat_high_cur, size=feat_low_cur.size()[2:], mode='bilinear', align_corners=True)
-            feat_high_pre = F.upsample(feat_high_pre, size=feat_low_pre.size()[2:], mode='bilinear', align_corners=True)
-            feat_high_mutual = F.upsample(feat_high_mutual, size=feat_low_cur.size()[2:], mode='bilinear',
-                                          align_corners=True)
-
-            predict0_pre = self.predict0(feat_high_pre)
-            predict1_pre = self.predict1(torch.cat((predict0_pre, feat_low_pre), 1)) + predict0_pre
-            predict2_pre = self.predict2(torch.cat((predict1_pre, feat_high_pre), 1)) + predict1_pre
-            predict3_pre = self.predict3(torch.cat((predict2_pre, feat_high_mutual), 1)) + predict2_pre
-
-            predict0_cur = self.predict0(feat_high_cur)
-            predict1_cur = self.predict1(torch.cat((predict0_cur, feat_low_cur), 1)) + predict0_cur
-            predict2_cur = self.predict2(torch.cat((predict1_cur, feat_high_cur), 1)) + predict1_cur
-            predict3_cur = self.predict3(torch.cat((predict2_cur, feat_high_mutual), 1)) + predict2_cur
-
-            predict0_pre = F.upsample(predict0_pre, size=pre.size()[2:], mode='bilinear', align_corners=True)
-            predict1_pre = F.upsample(predict1_pre, size=pre.size()[2:], mode='bilinear', align_corners=True)
-            predict2_pre = F.upsample(predict2_pre, size=pre.size()[2:], mode='bilinear', align_corners=True)
-            predict3_pre = F.upsample(predict3_pre, size=pre.size()[2:], mode='bilinear', align_corners=True)
-
-            predict0_cur = F.upsample(predict0_cur, size=pre.size()[2:], mode='bilinear', align_corners=True)
-            predict1_cur = F.upsample(predict1_cur, size=pre.size()[2:], mode='bilinear', align_corners=True)
-            predict2_cur = F.upsample(predict2_cur, size=pre.size()[2:], mode='bilinear', align_corners=True)
-            predict3_cur = F.upsample(predict3_cur, size=pre.size()[2:], mode='bilinear', align_corners=True)
-
-            if self.training:
-                return predict0_pre, predict0_cur, predict1_pre, predict1_cur, predict2_pre, predict2_cur, predict3_pre, predict3_cur
-            return F.sigmoid(predict0_cur), F.sigmoid(predict1_cur), F.sigmoid(predict3_cur)

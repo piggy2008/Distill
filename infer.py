@@ -16,19 +16,19 @@ import time
 torch.manual_seed(2018)
 
 # set which gpu to use
-torch.cuda.set_device(1)
+torch.cuda.set_device(0)
 
 # the following two args specify the location of the file of trained model (pth extension)
 # you should have the pth file in the folder './$ckpt_path$/$exp_name$'
 ckpt_path = './ckpt'
-exp_name = 'VideoSaliency_2020-01-11 22:29:06'
+exp_name = 'VideoSaliency_2020-02-02 10:27:58'
 
 args = {
-    'snapshot': '50000',  # your snapshot filename (exclude extension name)
+    'snapshot': '80000',  # your snapshot filename (exclude extension name)
     'crf_refine': False,  # whether to use crf to refine results
     'save_results': True,  # whether to save the resulting masks
     'input_size': (473, 473),
-    'seq': True
+    'seq': False
 }
 
 img_transform = transforms.Compose([
@@ -70,10 +70,10 @@ imgs_path = os.path.join(davis_path, 'davis_test2_single.txt')
 
 def main():
     # net = R3Net(motion='', se_layer=False, dilation=False, basic_model='resnet50')
-    net = Distill(basic_model='resnet50', seq=True)
+    net = Distill(basic_model='resnet50', seq=False)
 
     print ('load snapshot \'%s\' for testing' % args['snapshot'])
-    net.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, args['snapshot'] + '.pth'), map_location='cuda:2'))
+    net.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, args['snapshot'] + '.pth'), map_location='cuda:0'))
     net.eval()
     net.cuda()
     results = {}
@@ -105,7 +105,7 @@ def main():
                         img = img.resize(args['input_size'])
                         img_var = Variable(img_transform(img).unsqueeze(0), volatile=True).cuda()
                         start = time.time()
-                        _, _, prediction = net(img_var, img_var, flag='seq')
+                        prediction = net(img_var, img_var, flag='seq')
                         end = time.time()
                         print('running time:', (end - start))
                     else:
@@ -121,7 +121,7 @@ def main():
                         img_var = Variable(img_transform(img).unsqueeze(0), volatile=True).cuda()
                         pre_var = Variable(img_transform(pre).unsqueeze(0), volatile=True).cuda()
                         start = time.time()
-                        _, _, prediction = net(pre_var, img_var, flag='seq')
+                        prediction = net(pre_var, img_var, flag='seq')
                         end = time.time()
                         print('running time:', (end - start))
                 else:
@@ -134,7 +134,7 @@ def main():
                     img = img.resize(args['input_size'])
                     img_var = Variable(img_transform(img).unsqueeze(0), volatile=True).cuda()
 
-                    _, _, prediction, _ = net(img_var, img_var)
+                    prediction = net(img_var, img_var)
                     end = time.time()
                     print('running time:', (end - start))
 
