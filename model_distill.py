@@ -158,13 +158,21 @@ class Distill(nn.Module):
                 # nn.Conv2d(256, 256, kernel_size=1), nn.PReLU(),
             )
 
-            self.predict3 = nn.Sequential(
-                nn.Conv2d(257, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
-                nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
-                nn.Conv2d(128, 1, kernel_size=1)
-            )
+            self.predict1 = nn.Conv2d(256 * 2, 1, kernel_size=1)
+    def generate_attention(self, query, value):
+        b, c, h, w = query.size()
+        value_a = value.view(b, c, h * w).permute(0, 2, 1)
+        query_a = query.view(b, c, h * w)
 
-    def forward(self, pre, cur, flag='single'):
+        feat = torch.matmul(value_a, query_a)
+        feat = F.softmax((c ** -.5) * feat, dim=-1)
+        feat = torch.matmul(feat, query_a.permute(0, 2, 1)).permute(0, 2, 1)
+        feat_mutual = torch.cat([feat, query_a], dim=1).view(b, 2 * c, h, w)
+
+        feat_mutual = self.mutual(feat_mutual)
+        return feat_mutual
+
+    def forward(self, pre, cur, next, flag='single'):
 
         if flag == 'single':
             feat_high_cur = self.head(cur)
@@ -186,4 +194,20 @@ class Distill(nn.Module):
                 return predict0
             else:
                 return F.sigmoid(predict0)
-
+        else:
+            feat_high_pre = self.head(pre)
+            feat_high_cur = self.head(cur)
+            feat_high_next = self.head(next)
+            
+            pre_feat = self.generate_attention(feat_high_pre, feat_high_cur)
+            cur_feat = self.generate_attention(feat_high_cur, feat_high_pre) + self.generate_attention(feat_high_cur, feat_high_next)
+            next_feat = self.generate_attention(feat_high_next, feat_high_cur)
+            
+            predict1_pre = self.predict1(pre_feat)
+            predict1_cur = self.predict1(cur_feat)
+            predict1_next = self.predict1(next_feat)
+            
+            if self.training:
+                return predict1_pre, predict1_cur, predict1_next
+            else:
+                return F.sigmoid(predict1_cur)
