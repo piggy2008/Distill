@@ -158,7 +158,7 @@ class Distill(nn.Module):
                 # nn.Conv2d(256, 256, kernel_size=1), nn.PReLU(),
             )
 
-            self.predict1 = nn.Conv2d(256 * 2, 1, kernel_size=1)
+            self.predict1 = nn.Conv2d(256, 1, kernel_size=1)
     def generate_attention(self, query, value):
         b, c, h, w = query.size()
         value_a = value.view(b, c, h * w).permute(0, 2, 1)
