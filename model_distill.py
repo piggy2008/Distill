@@ -207,6 +207,10 @@ class Distill(nn.Module):
             predict1_cur = self.predict1(cur_feat)
             predict1_next = self.predict1(next_feat)
             
+            predict1_pre = F.upsample(predict1_pre, size=cur.size()[2:], mode='bilinear', align_corners=True)
+            predict1_cur = F.upsample(predict1_cur, size=cur.size()[2:], mode='bilinear', align_corners=True)
+            predict1_next = F.upsample(predict1_next, size=cur.size()[2:], mode='bilinear', align_corners=True)
+            
             if self.training:
                 return predict1_pre, predict1_cur, predict1_next
             else:
