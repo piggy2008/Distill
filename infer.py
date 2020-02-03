@@ -21,7 +21,7 @@ torch.cuda.set_device(0)
 # the following two args specify the location of the file of trained model (pth extension)
 # you should have the pth file in the folder './$ckpt_path$/$exp_name$'
 ckpt_path = './ckpt'
-exp_name = 'VideoSaliency_2020-02-02 10:27:58'
+exp_name = 'VideoSaliency_2020-02-02 10:29:19'
 
 args = {
     'snapshot': '80000',  # your snapshot filename (exclude extension name)
@@ -134,7 +134,7 @@ def main():
                     img = img.resize(args['input_size'])
                     img_var = Variable(img_transform(img).unsqueeze(0), volatile=True).cuda()
 
-                    prediction = net(img_var, img_var)
+                    prediction = net(img_var, img_var, img_var)
                     end = time.time()
                     print('running time:', (end - start))
 
