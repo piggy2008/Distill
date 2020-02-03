@@ -21,14 +21,14 @@ torch.cuda.set_device(0)
 # the following two args specify the location of the file of trained model (pth extension)
 # you should have the pth file in the folder './$ckpt_path$/$exp_name$'
 ckpt_path = './ckpt'
-exp_name = 'VideoSaliency_2020-02-02 10:27:58'
+exp_name = 'VideoSaliency_2020-02-02 20:36:06'
 
 args = {
     'snapshot': '80000',  # your snapshot filename (exclude extension name)
     'crf_refine': False,  # whether to use crf to refine results
     'save_results': True,  # whether to save the resulting masks
     'input_size': (473, 473),
-    'seq': False
+    'seq': True
 }
 
 img_transform = transforms.Compose([
@@ -70,7 +70,7 @@ imgs_path = os.path.join(davis_path, 'davis_test2_single.txt')
 
 def main():
     # net = R3Net(motion='', se_layer=False, dilation=False, basic_model='resnet50')
-    net = Distill(basic_model='resnet50', seq=False)
+    net = Distill(basic_model='resnet50', dilation=True, seq=True)
 
     print ('load snapshot \'%s\' for testing' % args['snapshot'])
     net.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, args['snapshot'] + '.pth'), map_location='cuda:0'))
@@ -105,10 +105,30 @@ def main():
                         img = img.resize(args['input_size'])
                         img_var = Variable(img_transform(img).unsqueeze(0), volatile=True).cuda()
                         start = time.time()
-                        prediction = net(img_var, img_var, flag='seq')
+                        prediction = net(img_var, img_var, img_var, flag='seq')
                         end = time.time()
                         print('running time:', (end - start))
-                    elif video != img_list[idx - 1]..split('/')[0]:
+                    elif (idx + 1) >= len(img_list):
+                        if name == 'VOS' or name == 'DAVSOD':
+                            img = Image.open(os.path.join(root, img_name + '.png')).convert('RGB')
+                            pre = Image.open(os.path.join(root, img_list[idx - 1] + '.png')).convert('RGB')
+                            next = Image.open(os.path.join(root, img_name + '.png')).convert('RGB')
+                        else:
+                            img = Image.open(os.path.join(root, img_name + '.jpg')).convert('RGB')
+                            pre = Image.open(os.path.join(root, img_list[idx - 1] + '.jpg')).convert('RGB')
+                            next = Image.open(os.path.join(root, img_name + '.jpg')).convert('RGB')
+                        shape = img.size
+                        img = img.resize(args['input_size'])
+                        pre = pre.resize(args['input_size'])
+                        next = next.resize(args['input_size'])
+                        img_var = Variable(img_transform(img).unsqueeze(0), volatile=True).cuda()
+                        pre_var = Variable(img_transform(pre).unsqueeze(0), volatile=True).cuda()
+                        next_var = Variable(img_transform(next).unsqueeze(0), volatile=True).cuda()
+                        start = time.time()
+                        prediction = net(pre_var, img_var, next_var, flag='seq')
+                        end = time.time()
+                        print('running time:', (end - start))
+                    elif video != img_list[idx + 1].split('/')[0]:
                         if name == 'VOS' or name == 'DAVSOD':
                             img = Image.open(os.path.join(root, img_name + '.png')).convert('RGB')
                             pre = Image.open(os.path.join(root, img_list[idx - 1] + '.png')).convert('RGB')
