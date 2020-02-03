@@ -191,7 +191,8 @@ class Distill(nn.Module):
             feat_high_cur, feat_low_cur = self.head(cur)
 
             # feat_high_cur = self.relation(feat_high_cur, feat_high_cur)
-            feat_high_cur = F.upsample(feat_high_cur, size=feat_low_cur.size()[2:], mode='bilinear', align_corners=True)
+            feat_high_cur = F.upsample(feat_high_cur, size=(60, 60), mode='bilinear', align_corners=True)
+            feat_low_cur = F.upsample(feat_low_cur, size=(60, 60), mode='bilinear', align_corners=True)
             
             feat_cur = self.generate_attention(feat_high_cur, feat_low_cur, self.mutual_self)
             predict0 = self.predict0(feat_cur)
@@ -217,13 +218,16 @@ class Distill(nn.Module):
             cur_feat = self.generate_attention(feat_high_cur, feat_high_pre, self.mutual_cur) + self.generate_attention(feat_high_cur, feat_high_next, self.mutual_cur)
             next_feat = self.generate_attention(feat_high_next, feat_high_cur,  self.mutual_next)
             
-            pre_feat = F.upsample(pre_feat, size=feat_low_pre.size()[2:], mode='bilinear', align_corners=True)
+            pre_feat = F.upsample(pre_feat, size=(60, 60), mode='bilinear', align_corners=True)
+            feat_low_pre = F.upsample(feat_low_pre, size=(60, 60), mode='bilinear', align_corners=True)
             pre_feat = self.generate_attention(pre_feat, feat_low_pre, self.mutual_self)
             
-            cur_feat = F.upsample(cur_feat, size=feat_low_cur.size()[2:], mode='bilinear', align_corners=True)
-            cur_feat = self.generate_attention(cur_feat, feat_low_pre, self.mutual_self)
+            cur_feat = F.upsample(cur_feat, size=(60, 60), mode='bilinear', align_corners=True)
+            feat_low_cur = F.upsample(feat_low_cur, size=(60, 60), mode='bilinear', align_corners=True)
+            cur_feat = self.generate_attention(cur_feat, feat_low_cur, self.mutual_self)
             
-            next_feat = F.upsample(next_feat, size=feat_low_next.size()[2:], mode='bilinear', align_corners=True)
+            next_feat = F.upsample(next_feat, size=(60, 60), mode='bilinear', align_corners=True)
+            feat_low_next = F.upsample(feat_low_next, size=(60, 60), mode='bilinear', align_corners=True)
             next_feat = self.generate_attention(next_feat, feat_low_next, self.mutual_self)
             
             predict1_pre = self.predict1_pre(pre_feat)
