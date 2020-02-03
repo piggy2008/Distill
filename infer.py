@@ -108,20 +108,44 @@ def main():
                         prediction = net(img_var, img_var, flag='seq')
                         end = time.time()
                         print('running time:', (end - start))
+                    elif video != img_list[idx - 1]..split('/')[0]:
+                        if name == 'VOS' or name == 'DAVSOD':
+                            img = Image.open(os.path.join(root, img_name + '.png')).convert('RGB')
+                            pre = Image.open(os.path.join(root, img_list[idx - 1] + '.png')).convert('RGB')
+                            next = Image.open(os.path.join(root, img_name + '.png')).convert('RGB')
+                        else:
+                            img = Image.open(os.path.join(root, img_name + '.jpg')).convert('RGB')
+                            pre = Image.open(os.path.join(root, img_list[idx - 1] + '.jpg')).convert('RGB')
+                            next = Image.open(os.path.join(root, img_name + '.jpg')).convert('RGB')
+                        shape = img.size
+                        img = img.resize(args['input_size'])
+                        pre = pre.resize(args['input_size'])
+                        next = next.resize(args['input_size'])
+                        img_var = Variable(img_transform(img).unsqueeze(0), volatile=True).cuda()
+                        pre_var = Variable(img_transform(pre).unsqueeze(0), volatile=True).cuda()
+                        next_var = Variable(img_transform(next).unsqueeze(0), volatile=True).cuda()
+                        start = time.time()
+                        prediction = net(pre_var, img_var, next_var, flag='seq')
+                        end = time.time()
+                        print('running time:', (end - start))
                     else:
                         if name == 'VOS' or name == 'DAVSOD':
                             img = Image.open(os.path.join(root, img_name + '.png')).convert('RGB')
                             pre = Image.open(os.path.join(root, img_list[idx - 1] + '.png')).convert('RGB')
+                            next = Image.open(os.path.join(root, img_list[idx + 1] + '.png')).convert('RGB')
                         else:
                             img = Image.open(os.path.join(root, img_name + '.jpg')).convert('RGB')
                             pre = Image.open(os.path.join(root, img_list[idx - 1] + '.jpg')).convert('RGB')
+                            next = Image.open(os.path.join(root, img_list[idx + 1] + '.jpg')).convert('RGB')
                         shape = img.size
                         img = img.resize(args['input_size'])
                         pre = pre.resize(args['input_size'])
+                        next = next.resize(args['input_size'])
                         img_var = Variable(img_transform(img).unsqueeze(0), volatile=True).cuda()
                         pre_var = Variable(img_transform(pre).unsqueeze(0), volatile=True).cuda()
+                        next_var = Variable(img_transform(next).unsqueeze(0), volatile=True).cuda()
                         start = time.time()
-                        prediction = net(pre_var, img_var, flag='seq')
+                        prediction = net(pre_var, img_var, next_var, flag='seq')
                         end = time.time()
                         print('running time:', (end - start))
                 else:
