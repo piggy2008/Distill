@@ -206,7 +206,13 @@ def train_single(net, inputs, labels, criterion, optimizer, curr_iter):
     loss1 = criterion(outputs1, labels)
     loss2 = criterion(outputs2, labels)
 
-    total_loss = loss0 + loss1 + loss2
+    if args['distillation']:
+        loss02 = criterion(outputs0, F.sigmoid(outputs2))
+        loss12 = criterion(outputs1, F.sigmoid(outputs2))
+
+        total_loss = loss0 + loss1 + loss2 + 0.5 * loss02 + 0.5 * loss12
+    else:
+        total_loss = loss0 + loss1 + loss2
 
     total_loss.backward()
     optimizer.step()
