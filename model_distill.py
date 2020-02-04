@@ -138,16 +138,16 @@ class Distill(nn.Module):
                 # nn.Conv2d(256, 256, kernel_size=1), nn.PReLU(),
         )
         self.predict0 = nn.Conv2d(256, 1, kernel_size=1)
-        # self.predict1 = nn.Sequential(
-        #     nn.Conv2d(257, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
-        #     nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
-        #     nn.Conv2d(128, 1, kernel_size=1)
-        # )
-        # self.predict2 = nn.Sequential(
-        #     nn.Conv2d(257, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
-        #     nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
-        #     nn.Conv2d(128, 1, kernel_size=1)
-        # )
+        self.predict1 = nn.Sequential(
+            nn.Conv2d(257, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
+            nn.Conv2d(128, 1, kernel_size=1)
+        )
+        self.predict2 = nn.Sequential(
+            nn.Conv2d(257, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
+            nn.Conv2d(128, 1, kernel_size=1)
+        )
         # self.predict3 = nn.Sequential(
         #     nn.Conv2d(257, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
         #     nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
@@ -169,9 +169,6 @@ class Distill(nn.Module):
                 # nn.Conv2d(256, 256, kernel_size=1), nn.PReLU(),
             )
 
-            self.predict1_pre = nn.Conv2d(256, 1, kernel_size=1)
-            self.predict1_cur = nn.Conv2d(256, 1, kernel_size=1)
-            self.predict1_next = nn.Conv2d(256, 1, kernel_size=1)
     def generate_attention(self, query, value, operation):
         b, c, h, w = query.size()
         value_a = value.view(b, c, h * w).permute(0, 2, 1)
@@ -191,24 +188,24 @@ class Distill(nn.Module):
             feat_high_cur, feat_low_cur = self.head(cur)
 
             # feat_high_cur = self.relation(feat_high_cur, feat_high_cur)
-            feat_high_cur = F.upsample(feat_high_cur, size=up_size, mode='bilinear', align_corners=True)
-            feat_low_cur = F.upsample(feat_low_cur, size=up_size, mode='bilinear', align_corners=True)
+            feat_high_cur = F.upsample(feat_high_cur, size=feat_low_cur.size()[2:], mode='bilinear', align_corners=True)
+#             feat_low_cur = F.upsample(feat_low_cur, size=up_size, mode='bilinear', align_corners=True)
             
-            feat_cur = self.generate_attention(feat_high_cur, feat_low_cur, self.mutual_self)
-            predict0 = self.predict0(feat_cur)
-            # predict1 = self.predict1(torch.cat((predict0, feat_low_cur), 1)) + predict0
-            # predict2 = self.predict2(torch.cat((predict1, feat_high_cur), 1)) + predict1
+#             feat_cur = self.generate_attention(feat_high_cur, feat_low_cur, self.mutual_self)
+            predict0 = self.predict0(feat_high_cur)
+            predict1 = self.predict1(torch.cat((predict0, feat_low_cur), 1)) + predict0
+            predict2 = self.predict2(torch.cat((predict1, feat_high_cur), 1)) + predict1
             # predict3 = self.predict3(torch.cat((predict2, feat_low_cur), 1)) + predict2
 
             predict0 = F.upsample(predict0, size=cur.size()[2:], mode='bilinear', align_corners=True)
-            # predict1 = F.upsample(predict1, size=cur.size()[2:], mode='bilinear', align_corners=True)
-            # predict2 = F.upsample(predict2, size=cur.size()[2:], mode='bilinear', align_corners=True)
+            predict1 = F.upsample(predict1, size=cur.size()[2:], mode='bilinear', align_corners=True)
+            predict2 = F.upsample(predict2, size=cur.size()[2:], mode='bilinear', align_corners=True)
             # predict3 = F.upsample(predict3, size=cur.size()[2:], mode='bilinear', align_corners=True)
 
             if self.training:
-                return predict0
+                return predict0, predict1, predict2
             else:
-                return F.sigmoid(predict0)
+                return F.sigmoid(predict2)
         else:
             feat_high_pre, feat_low_pre = self.head(pre)
             feat_high_cur, feat_low_cur = self.head(cur)
@@ -218,27 +215,35 @@ class Distill(nn.Module):
             cur_feat = self.generate_attention(feat_high_cur, feat_high_pre, self.mutual_cur) + self.generate_attention(feat_high_cur, feat_high_next, self.mutual_cur)
             next_feat = self.generate_attention(feat_high_next, feat_high_cur,  self.mutual_next)
             
-            pre_feat = F.upsample(pre_feat, size=up_size, mode='bilinear', align_corners=True)
-            feat_low_pre = F.upsample(feat_low_pre, size=up_size, mode='bilinear', align_corners=True)
-            pre_feat = self.generate_attention(pre_feat, feat_low_pre, self.mutual_self)
+            pre_feat = F.upsample(pre_feat, size=feat_low_pre.size()[2:], mode='bilinear', align_corners=True)
+            cur_feat = F.upsample(cur_feat, size=feat_low_cur.size()[2:], mode='bilinear', align_corners=True)
+            next_feat = F.upsample(next_feat, size=feat_low_next.size()[2:], mode='bilinear', align_corners=True)
             
-            cur_feat = F.upsample(cur_feat, size=up_size, mode='bilinear', align_corners=True)
-            feat_low_cur = F.upsample(feat_low_cur, size=up_size, mode='bilinear', align_corners=True)
-            cur_feat = self.generate_attention(cur_feat, feat_low_cur, self.mutual_self)
+            predict0_pre = self.predict0(pre_feat)
+            predict1_pre = self.predict1(torch.cat((predict0_pre, feat_low_pre), 1)) + predict0_pre
+            predict2_pre = self.predict2(torch.cat((predict1_pre, pre_feat), 1)) + predict1_pre
             
-            next_feat = F.upsample(next_feat, size=up_size, mode='bilinear', align_corners=True)
-            feat_low_next = F.upsample(feat_low_next, size=up_size, mode='bilinear', align_corners=True)
-            next_feat = self.generate_attention(next_feat, feat_low_next, self.mutual_self)
+            predict0_cur = self.predict0(cur_feat)
+            predict1_cur = self.predict1(torch.cat((predict0_cur, feat_low_cur), 1)) + predict0_cur
+            predict2_cur = self.predict2(torch.cat((predict1_cur, cur_feat), 1)) + predict1_cur
             
-            predict1_pre = self.predict1_pre(pre_feat)
-            predict1_cur = self.predict1_cur(cur_feat)
-            predict1_next = self.predict1_next(next_feat)
+            predict0_next = self.predict0(next_feat)
+            predict1_next = self.predict1(torch.cat((predict0_next, feat_low_next), 1)) + predict0_next
+            predict2_next = self.predict2(torch.cat((predict1_next, next_feat), 1)) + predict1_next
+            
+            predict0_pre = F.upsample(predict0_pre, size=cur.size()[2:], mode='bilinear', align_corners=True)
+            predict0_cur = F.upsample(predict0_cur, size=cur.size()[2:], mode='bilinear', align_corners=True)
+            predict0_next = F.upsample(predict0_next, size=cur.size()[2:], mode='bilinear', align_corners=True)
             
             predict1_pre = F.upsample(predict1_pre, size=cur.size()[2:], mode='bilinear', align_corners=True)
             predict1_cur = F.upsample(predict1_cur, size=cur.size()[2:], mode='bilinear', align_corners=True)
             predict1_next = F.upsample(predict1_next, size=cur.size()[2:], mode='bilinear', align_corners=True)
             
+            predict2_pre = F.upsample(predict2_pre, size=cur.size()[2:], mode='bilinear', align_corners=True)
+            predict2_cur = F.upsample(predict2_cur, size=cur.size()[2:], mode='bilinear', align_corners=True)
+            predict2_next = F.upsample(predict2_next, size=cur.size()[2:], mode='bilinear', align_corners=True)
+            
             if self.training:
-                return predict1_pre, predict1_cur, predict1_next
+                return predict0_pre, predict0_cur, predict0_next, predict1_pre, predict1_cur, predict1_next, predict2_pre, predict2_cur, predict2_next
             else:
-                return F.sigmoid(predict1_cur)
+                return F.sigmoid(predict2_cur)

@@ -201,17 +201,17 @@ def train_single(net, inputs, labels, criterion, optimizer, curr_iter):
     labels = Variable(labels).cuda()
 
     optimizer.zero_grad()
-    outputs0 = net(inputs, inputs, inputs, flag='single')
+    outputs0, outputs1, outputs2 = net(inputs, inputs, inputs, flag='single')
     loss0 = criterion(outputs0, labels)
-    # loss1 = criterion(outputs1, labels)
-    # loss2 = criterion(outputs2, labels)
+    loss1 = criterion(outputs1, labels)
+    loss2 = criterion(outputs2, labels)
 
-    total_loss = loss0
+    total_loss = loss0 + loss1 + loss2
 
     total_loss.backward()
     optimizer.step()
 
-    print_log(total_loss, loss0, loss0, loss0, args['train_batch_size'], curr_iter, optimizer)
+    print_log(total_loss, loss0, loss1, loss2, args['train_batch_size'], curr_iter, optimizer)
 
     return
 
@@ -226,17 +226,28 @@ def train_seq(net, previous_frame, previous_gt, current_frame, current_gt, next_
 
     optimizer.zero_grad()
     
-    predict1_pre, predict1_cur, predict1_next = net(previous_frame, current_frame, next_frame, 'seq')
+    predict0_pre, predict0_cur, predict0_next, predict1_pre, predict1_cur, predict1_next, predict2_pre, predict2_cur, predict2_next = net(previous_frame, current_frame, next_frame, 'seq')
 
+    loss0_pre = criterion(predict0_pre, previous_gt)
     loss1_pre = criterion(predict1_pre, previous_gt)
+    loss2_pre = criterion(predict2_pre, previous_gt)
+    total_loss_pre = loss0_pre + loss1_pre + loss2_pre
+    
+    loss0_cur = criterion(predict0_cur, current_gt)
     loss1_cur = criterion(predict1_cur, current_gt)
+    loss2_cur = criterion(predict2_cur, current_gt)
+    total_loss_cur = loss0_cur + loss1_cur + loss2_cur
+    
+    loss0_next = criterion(predict0_next, next_gt)
     loss1_next = criterion(predict1_next, next_gt)
+    loss2_next = criterion(predict2_next, next_gt)
+    total_loss_next = loss0_next + loss1_next + loss2_next
 
-    total_loss = loss1_pre + loss1_cur + loss1_next
+    total_loss = total_loss_pre + total_loss_cur + total_loss_next
     total_loss.backward()
     optimizer.step()
 
-    print_log(total_loss, loss1_pre, loss1_cur, loss1_next, args['train_batch_size'], curr_iter,
+    print_log(total_loss, total_loss_pre, total_loss_cur, total_loss_next, args['train_batch_size'], curr_iter,
               optimizer, 'seq')
 
     return
