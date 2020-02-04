@@ -226,7 +226,8 @@ def train_seq(net, previous_frame, previous_gt, current_frame, current_gt, next_
 
     optimizer.zero_grad()
     
-    predict0_pre, predict0_cur, predict0_next, predict1_pre, predict1_cur, predict1_next, predict2_pre, predict2_cur, predict2_next = net(previous_frame, current_frame, next_frame, 'seq')
+    predict0_pre, predict0_cur, predict0_next, predict1_pre, predict1_cur, predict1_next, \
+    predict2_pre, predict2_cur, predict2_next = net(previous_frame, current_frame, next_frame, 'seq')
 
     loss0_pre = criterion(predict0_pre, previous_gt)
     loss1_pre = criterion(predict1_pre, previous_gt)
