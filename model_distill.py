@@ -156,18 +156,11 @@ class Distill(nn.Module):
 
 
         if seq:
-            self.mutual_pre = nn.Sequential(
+            self.mutual = nn.Sequential(
                 nn.Conv2d(512, 256, kernel_size=1, padding=0), nn.BatchNorm2d(256), nn.PReLU(),
                 # nn.Conv2d(256, 256, kernel_size=1), nn.PReLU(),
             )
-            self.mutual_cur = nn.Sequential(
-                nn.Conv2d(512, 256, kernel_size=1, padding=0), nn.BatchNorm2d(256), nn.PReLU(),
-                # nn.Conv2d(256, 256, kernel_size=1), nn.PReLU(),
-            )
-            self.mutual_next = nn.Sequential(
-                nn.Conv2d(512, 256, kernel_size=1, padding=0), nn.BatchNorm2d(256), nn.PReLU(),
-                # nn.Conv2d(256, 256, kernel_size=1), nn.PReLU(),
-            )
+            
 
     def generate_attention(self, query, value, operation):
         b, c, h, w = query.size()
@@ -211,9 +204,9 @@ class Distill(nn.Module):
             feat_high_cur, feat_low_cur = self.head(cur)
             feat_high_next, feat_low_next = self.head(next)
             
-            pre_feat = self.generate_attention(feat_high_pre, feat_high_cur, self.mutual_pre)
-            cur_feat = self.generate_attention(feat_high_cur, feat_high_pre, self.mutual_cur) + self.generate_attention(feat_high_cur, feat_high_next, self.mutual_cur)
-            next_feat = self.generate_attention(feat_high_next, feat_high_cur,  self.mutual_next)
+            pre_feat = self.generate_attention(feat_high_pre, feat_high_cur, self.mutual)
+            cur_feat = self.generate_attention(feat_high_cur, feat_high_pre, self.mutual) + self.generate_attention(feat_high_cur, feat_high_next, self.mutual)
+            next_feat = self.generate_attention(feat_high_next, feat_high_cur,  self.mutual)
             
             pre_feat = F.upsample(pre_feat, size=feat_low_pre.size()[2:], mode='bilinear', align_corners=True)
             cur_feat = F.upsample(cur_feat, size=feat_low_cur.size()[2:], mode='bilinear', align_corners=True)
