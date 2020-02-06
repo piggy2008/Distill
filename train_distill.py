@@ -35,10 +35,10 @@ args = {
     'seq': True,
     'se_layer': False,
     'dilation': False,
-    'distillation': True,
+    'distillation': False,
     'L2': False,
     'KL': False,
-    'iter_num': 80000,
+    'iter_num': 60000,
     'iter_save': 20000,
     'iter_start_seq': 0,
     'train_batch_size': 8,
@@ -48,8 +48,8 @@ args = {
     'weight_decay': 5e-4,
     'momentum': 0.95,
     'snapshot': '',
-    # 'pretrain': os.path.join(ckpt_path, 'VideoSaliency_2019-12-24 22:05:11', '50000.pth'),
-    'pretrain': '',
+    'pretrain': os.path.join(ckpt_path, 'VideoSaliency_2019-12-24 22:05:11', '50000.pth'),
+    # 'pretrain': '',
     'imgs_file': 'Pre-train/pretrain_all_seq_DUT_TR_DAFB2_DAVSOD2.txt',
     # 'imgs_file': 'video_saliency/train_all_DAFB2_DAVSOD_5f.txt',
     'train_loader': 'both'
@@ -79,7 +79,7 @@ img_transform = transforms.Compose([
 ])
 target_transform = transforms.ToTensor()
 
-# train_set = ImageFolder(msra10k_path, joint_transform, img_transform, target_transform)
+# train_set = Image1Folder(msra10k_path, joint_transform, img_transform, target_transform)
 if args['train_loader'] == 'video_sequence':
     train_set = VideoSequenceFolder(video_seq_path, video_seq_gt_path, imgs_file, joint_transform, img_transform, target_transform)
 elif args['train_loader'] == 'video_image':
@@ -160,7 +160,7 @@ def train(net, optimizer):
 
             else:
 
-                if curr_iter % 3 == 0:
+                if curr_iter % 3 == 1:
                     previous_frame1, previous_frame2 = torch.chunk(previous_frame, 2, 0)
                     current_frame1, current_frame2 = torch.chunk(current_frame, 2, 0)
                     next_frame1,next_frame2 = torch.chunk(next_frame, 2, 0)
