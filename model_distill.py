@@ -212,15 +212,19 @@ class Distill(nn.Module):
             cur_feat = F.upsample(cur_feat, size=feat_low_cur.size()[2:], mode='bilinear', align_corners=True)
             next_feat = F.upsample(next_feat, size=feat_low_next.size()[2:], mode='bilinear', align_corners=True)
             
-            predict0_pre = self.predict0(pre_feat)
+            feat_high_pre = F.upsample(feat_high_pre, size=feat_low_pre.size()[2:], mode='bilinear', align_corners=True)
+            feat_high_cur = F.upsample(feat_high_cur, size=feat_low_cur.size()[2:], mode='bilinear', align_corners=True)
+            feat_high_next = F.upsample(feat_high_next, size=feat_low_next.size()[2:], mode='bilinear', align_corners=True)
+            
+            predict0_pre = self.predict0(feat_high_pre)
             predict1_pre = self.predict1(torch.cat((predict0_pre, feat_low_pre), 1)) + predict0_pre
             predict2_pre = self.predict2(torch.cat((predict1_pre, pre_feat), 1)) + predict1_pre
             
-            predict0_cur = self.predict0(cur_feat)
+            predict0_cur = self.predict0(feat_high_cur)
             predict1_cur = self.predict1(torch.cat((predict0_cur, feat_low_cur), 1)) + predict0_cur
             predict2_cur = self.predict2(torch.cat((predict1_cur, cur_feat), 1)) + predict1_cur
             
-            predict0_next = self.predict0(next_feat)
+            predict0_next = self.predict0(feat_high_next)
             predict1_next = self.predict1(torch.cat((predict0_next, feat_low_next), 1)) + predict0_next
             predict2_next = self.predict2(torch.cat((predict1_next, next_feat), 1)) + predict1_next
             
