@@ -30,7 +30,7 @@ ckpt_path = './ckpt'
 exp_name = 'VideoSaliency' + '_' + time_str
 
 args = {
-    'basic_model': 'resnet50',
+    'basic_model': 'resnet101',
     'motion': '',
     'seq': True,
     'se_layer': False,
@@ -38,18 +38,18 @@ args = {
     'distillation': True,
     'L2': False,
     'KL': False,
-    'iter_num': 60000,
+    'iter_num': 80000,
     'iter_save': 10000,
     'iter_start_seq': 0,
-    'train_batch_size': 8,
+    'train_batch_size': 6,
     'last_iter': 0,
     'lr': 1e-3,
     'lr_decay': 0.9,
     'weight_decay': 5e-4,
     'momentum': 0.95,
     'snapshot': '',
-    'pretrain': os.path.join(ckpt_path, 'VideoSaliency_2019-12-24 22:05:11', '50000.pth'),
-    # 'pretrain': '',
+    # 'pretrain': os.path.join(ckpt_path, 'VideoSaliency_2019-12-24 22:05:11', '50000.pth'),
+    'pretrain': '',
     'imgs_file': 'Pre-train/pretrain_all_seq_DUT_TR_DAFB2_DAVSOD2.txt',
     # 'imgs_file': 'video_saliency/train_all_DAFB2_DAVSOD_5f.txt',
     'train_loader': 'both'
