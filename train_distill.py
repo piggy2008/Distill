@@ -20,7 +20,7 @@ from utils_mine import load_part_of_model
 import random
 
 cudnn.benchmark = True
-device_id = 2
+device_id = 3
 torch.manual_seed(2019)
 torch.cuda.set_device(device_id)
 
@@ -30,18 +30,18 @@ ckpt_path = './ckpt'
 exp_name = 'VideoSaliency' + '_' + time_str
 
 args = {
-    'basic_model': 'resnet101',
+    'basic_model': 'resnet50',
     'motion': '',
     'seq': True,
     'se_layer': False,
     'dilation': False,
-    'distillation': True,
+    'distillation': False,
     'L2': False,
     'KL': False,
     'iter_num': 80000,
     'iter_save': 10000,
-    'iter_start_seq': 0,
-    'train_batch_size': 6,
+    'iter_start_seq': 90000,
+    'train_batch_size': 8,
     'last_iter': 0,
     'lr': 1e-3,
     'lr_decay': 0.9,

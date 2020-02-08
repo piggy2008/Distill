@@ -21,10 +21,10 @@ torch.cuda.set_device(0)
 # the following two args specify the location of the file of trained model (pth extension)
 # you should have the pth file in the folder './$ckpt_path$/$exp_name$'
 ckpt_path = './ckpt'
-exp_name = 'VideoSaliency_2020-02-07 10:21:08'
+exp_name = 'VideoSaliency_2020-02-08 09:52:47'
 
 args = {
-    'snapshot': '80000',  # your snapshot filename (exclude extension name)
+    'snapshot': '70000',  # your snapshot filename (exclude extension name)
     'crf_refine': False,  # whether to use crf to refine results
     'save_results': True,  # whether to save the resulting masks
     'input_size': (473, 473),
@@ -70,7 +70,7 @@ imgs_path = os.path.join(davis_path, 'davis_test2_single.txt')
 
 def main():
     # net = R3Net(motion='', se_layer=False, dilation=False, basic_model='resnet50')
-    net = Distill(basic_model='resnet50', dilation=False, seq=True)
+    net = Distill(basic_model='resnet101', dilation=False, seq=True)
 
     print ('load snapshot \'%s\' for testing' % args['snapshot'])
     net.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, args['snapshot'] + '.pth'), map_location='cuda:0'))
