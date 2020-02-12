@@ -4,7 +4,7 @@ from PIL import Image
 from misc import check_mkdir, crf_refine, AvgMeter, cal_precision_recall_mae, cal_fmeasure
 
 ckpt_path = './ckpt'
-exp_name = 'VideoSaliency_2020-01-07 22:22:22'
+exp_name = 'VideoSaliency_2020-02-09 00:46:19'
 name = 'davis'
 # root = '/home/qub/data/saliency/FBMS/FBMS_Testset2'
 root = '/home/ty/data/davis/davis_test2'
@@ -22,7 +22,7 @@ gt_root = '/home/ty/data/davis/GT'
 # gt_root = '/home/ty/data/DAVSOD/GT'
 # gt_root = '/home/ty/data/SegTrack-V2/GT'
 args = {
-    'snapshot': '50000',  # your snapshot filename (exclude extension name)
+    'snapshot': '80000',  # your snapshot filename (exclude extension name)
     'crf_refine': False,  # whether to use crf to refine results
     'save_results': True  # whether to save the resulting masks
 }
