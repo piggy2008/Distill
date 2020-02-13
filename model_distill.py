@@ -212,9 +212,9 @@ class Distill(nn.Module):
             feat_high_cur, feat_low_cur = self.head(cur)
             feat_high_next, feat_low_next = self.head(next)
             
-            pre_feat = self.generate_attention(feat_high_pre, feat_high_cur, self.mutual_pre)
-            cur_feat = self.generate_attention(feat_high_cur, feat_high_pre, self.mutual_cur)
-            next_feat = self.generate_attention(feat_high_next, feat_high_cur,  self.mutual_next)
+            pre_feat = self.generate_attention(feat_high_pre, feat_high_cur, self.mutual)
+            cur_feat = self.generate_attention(feat_high_cur, feat_high_pre, self.mutual)
+            next_feat = self.generate_attention(feat_high_next, feat_high_cur,  self.mutual)
             
             pre_feat = F.upsample(pre_feat, size=feat_low_pre.size()[2:], mode='bilinear', align_corners=True)
             cur_feat = F.upsample(cur_feat, size=feat_low_cur.size()[2:], mode='bilinear', align_corners=True)

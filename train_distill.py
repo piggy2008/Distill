@@ -20,7 +20,7 @@ from utils_mine import load_part_of_model
 import random
 
 cudnn.benchmark = True
-device_id = 2
+device_id = 3
 torch.manual_seed(2019)
 torch.cuda.set_device(device_id)
 
@@ -38,7 +38,7 @@ args = {
     'distillation': False,
     'L2': False,
     'KL': False,
-    'iter_num': 60000,
+    'iter_num': 30000,
     'iter_save': 10000,
     'iter_start_seq': 0,
     'train_batch_size': 8,
