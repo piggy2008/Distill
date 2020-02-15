@@ -167,6 +167,10 @@ class Distill(nn.Module):
             )
             self.ConvGRU = ConvGRUCell(256, 256, 256, kernel_size=1)
             self.iter = 5
+            self.readout_conv = nn.Sequential(
+                nn.Conv2d(512, 256, kernel_size=3, padding=1), nn.BatchNorm2d(256), nn.PReLU(),
+                # nn.Conv2d(256, 256, kernel_size=1), nn.PReLU(),
+            )
             # self.mutual_cur = nn.Sequential(
             #     nn.Conv2d(512, 256, kernel_size=1, padding=0), nn.BatchNorm2d(256), nn.PReLU(),
             #     # nn.Conv2d(256, 256, kernel_size=1), nn.PReLU(),
@@ -175,7 +179,16 @@ class Distill(nn.Module):
             #     nn.Conv2d(512, 256, kernel_size=1, padding=0), nn.BatchNorm2d(256), nn.PReLU(),
             #     # nn.Conv2d(256, 256, kernel_size=1), nn.PReLU(),
             # )
-            
+    def readout(self, input1_att, exemplar): #exemplar,
+
+        input1_att = torch.cat([input1_att, exemplar],1)
+        input1_att  = self.readout_conv(input1_att )
+        # x1 = self.predict0(input1_att)
+        # x1 = F.upsample(x1, (w, h), mode='bilinear')  #upsample to the size of input image, scale=8
+        #print("after upsample, tensor size:", x.size())
+        # x1 = self.softmax(x1)
+
+        return input1_att
 
     def generate_attention(self, query, value, operation):
         b, c, h, w = query.size()
@@ -191,7 +204,7 @@ class Distill(nn.Module):
         return feat_mutual
 
     def forward(self, pre, cur, next, flag='single'):
-        up_size = (80, 80)
+        up_size = (40, 40)
         if flag == 'single':
             feat_high_cur, feat_low_cur = self.head(cur)
 
@@ -218,25 +231,41 @@ class Distill(nn.Module):
             feat_high_pre, feat_low_pre = self.head(pre)
             feat_high_cur, feat_low_cur = self.head(cur)
             feat_high_next, feat_low_next = self.head(next)
+            b, c, w, h = feat_high_cur.size()
 
-            for passing_round in range(self.iter):
+            # feat_high_pre = F.upsample(feat_high_pre, size=up_size, mode='bilinear', align_corners=True)
+            # feat_high_cur = F.upsample(feat_high_cur, size=up_size, mode='bilinear', align_corners=True)
+            # feat_high_next = F.upsample(feat_high_next, size=up_size, mode='bilinear', align_corners=True)
+            result_pres = torch.zeros(b, 256, w, h).cuda()
+            result_curs = torch.zeros(b, 256, w, h).cuda()
+            result_nexts = torch.zeros(b, 256, w, h).cuda()
+            for ii in range(b):
+                pre_single = feat_high_pre[ii, :, :, :][None].contiguous().clone()
+                cur_single = feat_high_cur[ii, :, :, :][None].contiguous().clone()
+                next_single = feat_high_next[ii, :, :, :][None].contiguous().clone()
+                for passing_round in range(self.iter):
 
-                attention_pre = self.conv_fusion(torch.cat([self.generate_attention(feat_high_pre, feat_high_cur, self.mutual),
-                                         self.generate_attention(feat_high_pre, feat_high_next, self.mutual)],1)) #message passing with concat operation
-                attention_cur = self.conv_fusion(torch.cat([self.generate_attention(feat_high_cur, feat_high_pre, self.mutual),
-                                        self.generate_attention(feat_high_cur, feat_high_next, self.mutual)],1))
-                attention_next = self.conv_fusion(torch.cat([self.generate_attention(feat_high_next, feat_high_pre, self.mutual),
-                                        self.generate_attention(feat_high_next, feat_high_cur, self.mutual)],1))
+                    attention_pre = self.conv_fusion(torch.cat([self.generate_attention(pre_single, cur_single, self.mutual),
+                                             self.generate_attention(pre_single, next_single, self.mutual)],1)) #message passing with concat operation
+                    attention_cur = self.conv_fusion(torch.cat([self.generate_attention(cur_single, pre_single, self.mutual),
+                                            self.generate_attention(cur_single, next_single, self.mutual)],1))
+                    attention_next = self.conv_fusion(torch.cat([self.generate_attention(next_single, pre_single, self.mutual),
+                                            self.generate_attention(next_single, cur_single, self.mutual)],1))
 
-                h_pre = self.ConvGRU(attention_pre, feat_high_pre)
-                #h_v1 = self.relu_m(h_v1)
-                h_cur = self.ConvGRU(attention_cur, feat_high_cur)
-                #h_v2 = self.relu_m(h_v2)
-                h_next = self.ConvGRU(attention_next, feat_high_next)
-                #h_v3 = self.relu_m(h_v3)
-                feat_high_pre = h_pre.clone()
-                feat_high_cur = h_cur.clone()
-                feat_high_next = h_next.clone()
+                    h_pre = self.ConvGRU(attention_pre, pre_single)
+                    #h_v1 = self.relu_m(h_v1)
+                    h_cur = self.ConvGRU(attention_cur, cur_single)
+                    #h_v2 = self.relu_m(h_v2)
+                    h_next = self.ConvGRU(attention_next, next_single)
+                    #h_v3 = self.relu_m(h_v3)
+                    pre_single = h_pre.clone()
+                    cur_single = h_cur.clone()
+                    next_single = h_next.clone()
+
+                    if passing_round == self.iter - 1:
+                        result_pres[ii, :, :, :] = self.readout(h_pre, feat_high_pre[ii, :, :, :][None].contiguous())
+                        result_curs[ii, :, :, :] = self.readout(h_cur, feat_high_cur[ii, :, :, :][None].contiguous())
+                        result_nexts[ii, :, :, :] = self.readout(h_next, feat_high_next[ii, :, :, :][None].contiguous())
 
             
 #             pre_feat = F.upsample(pre_feat, size=feat_low_pre.size()[2:], mode='bilinear', align_corners=True)
@@ -247,15 +276,15 @@ class Distill(nn.Module):
 #             feat_high_cur = F.upsample(feat_high_cur, size=feat_low_cur.size()[2:], mode='bilinear', align_corners=True)
 #             feat_high_next = F.upsample(feat_high_next, size=feat_low_next.size()[2:], mode='bilinear', align_corners=True)
             
-            predict0_pre = self.predict0(feat_high_pre)
+            predict0_pre = self.predict0(result_pres)
 #             predict1_pre = self.predict1(torch.cat((predict0_pre, feat_low_pre), 1)) + predict0_pre
 #             predict2_pre = self.predict2(torch.cat((predict1_pre, feat_high_pre), 1)) + predict1_pre
             
-            predict0_cur = self.predict0(feat_high_cur)
+            predict0_cur = self.predict0(result_curs)
 #             predict1_cur = self.predict1(torch.cat((predict0_cur, feat_low_cur), 1)) + predict0_cur
 #             predict2_cur = self.predict2(torch.cat((predict1_cur, feat_high_cur), 1)) + predict1_cur
             
-            predict0_next = self.predict0(feat_high_next)
+            predict0_next = self.predict0(result_nexts)
 #             predict1_next = self.predict1(torch.cat((predict0_next, feat_low_next), 1)) + predict0_next
 #             predict2_next = self.predict2(torch.cat((predict1_next, feat_high_next), 1)) + predict1_next
             
