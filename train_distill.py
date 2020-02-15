@@ -48,8 +48,8 @@ args = {
     'weight_decay': 5e-4,
     'momentum': 0.95,
     'snapshot': '',
-    # 'pretrain': os.path.join(ckpt_path, 'VideoSaliency_2020-02-09 00:46:19', '60000.pth'),
-    'pretrain': '',
+    'pretrain': os.path.join(ckpt_path, 'VideoSaliency_2020-02-04 11:17:40', '60000.pth'),
+    # 'pretrain': '',
     'imgs_file': 'Pre-train/pretrain_all_seq_DUT_TR_DAFB2_DAVSOD2.txt',
     # 'imgs_file': 'video_saliency/train_all_DAFB2_DAVSOD_5f.txt',
     'train_loader': 'both'
@@ -233,24 +233,24 @@ def train_seq(net, previous_frame, previous_gt, current_frame, current_gt, next_
 
     optimizer.zero_grad()
     
-    # predict0_pre, predict0_cur, predict0_next, predict1_pre, predict1_cur, predict1_next, \
-    # predict2_pre, predict2_cur, predict2_next = net(previous_frame, current_frame, next_frame, 'seq')
-    predict0_pre, predict0_cur, predict0_next = net(previous_frame, current_frame, next_frame, 'seq')
+    predict0_pre, predict0_cur, predict0_next, predict1_pre, predict1_cur, predict1_next, \
+    predict2_pre, predict2_cur, predict2_next = net(previous_frame, current_frame, next_frame, 'seq')
+    # predict0_pre, predict0_cur, predict0_next = net(previous_frame, current_frame, next_frame, 'seq')
 
     loss0_pre = criterion(predict0_pre, previous_gt)
-    # loss1_pre = criterion(predict1_pre, previous_gt)
-    # loss2_pre = criterion(predict2_pre, previous_gt)
-    total_loss_pre = loss0_pre
+    loss1_pre = criterion(predict1_pre, previous_gt)
+    loss2_pre = criterion(predict2_pre, previous_gt)
+    total_loss_pre = loss0_pre + loss1_pre + loss2_pre
     
     loss0_cur = criterion(predict0_cur, current_gt)
-    # loss1_cur = criterion(predict1_cur, current_gt)
-    # loss2_cur = criterion(predict2_cur, current_gt)
-    total_loss_cur = loss0_cur
+    loss1_cur = criterion(predict1_cur, current_gt)
+    loss2_cur = criterion(predict2_cur, current_gt)
+    total_loss_cur = loss0_cur + loss1_cur + loss2_cur
     
     loss0_next = criterion(predict0_next, next_gt)
-    # loss1_next = criterion(predict1_next, next_gt)
-    # loss2_next = criterion(predict2_next, next_gt)
-    total_loss_next = loss0_next
+    loss1_next = criterion(predict1_next, next_gt)
+    loss2_next = criterion(predict2_next, next_gt)
+    total_loss_next = loss0_next + loss1_next + loss2_next
 
     total_loss = total_loss_pre + total_loss_cur + total_loss_next
     total_loss.backward()
