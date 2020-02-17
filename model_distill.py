@@ -258,12 +258,22 @@ class Distill(nn.Module):
                 next_single = feat_high_next[ii, :, :, :][None].contiguous().clone()
                 for passing_round in range(self.iter):
 
-                    attention_pre = self.conv_fusion(torch.cat([self.generate_attention(pre_single, cur_single, self.mutual_pre),
-                                             self.generate_attention(pre_single, next_single, self.mutual_pre)],1)) #message passing with concat operation
-                    attention_cur = self.conv_fusion(torch.cat([self.generate_attention(cur_single, pre_single, self.mutual_cur),
-                                            self.generate_attention(cur_single, next_single, self.mutual_cur)],1))
-                    attention_next = self.conv_fusion(torch.cat([self.generate_attention(next_single, pre_single, self.mutual_next),
-                                            self.generate_attention(next_single, cur_single, self.mutual_next)],1))
+                    # attention_pre = self.conv_fusion(torch.cat([self.generate_attention(pre_single, cur_single, self.mutual_pre),
+                    #                          self.generate_attention(pre_single, next_single, self.mutual_pre)],1)) #message passing with concat operation
+                    # attention_cur = self.conv_fusion(torch.cat([self.generate_attention(cur_single, pre_single, self.mutual_cur),
+                    #                         self.generate_attention(cur_single, next_single, self.mutual_cur)],1))
+                    # attention_next = self.conv_fusion(torch.cat([self.generate_attention(next_single, pre_single, self.mutual_next),
+                    #                         self.generate_attention(next_single, cur_single, self.mutual_next)],1))
+
+                    attention_pre = self.conv_fusion(
+                        torch.cat([pre_single * cur_single,
+                                   pre_single * next_single], 1))  # message passing with concat operation
+                    attention_cur = self.conv_fusion(
+                        torch.cat([cur_single * pre_single,
+                                   cur_single * next_single], 1))
+                    attention_next = self.conv_fusion(
+                        torch.cat([next_single * pre_single,
+                                   next_single * cur_single], 1))
 
                     h_pre = self.ConvGRU(attention_pre, pre_single)
                     #h_v1 = self.relu_m(h_v1)
