@@ -20,7 +20,7 @@ from utils_mine import load_part_of_model
 import random
 
 cudnn.benchmark = True
-device_id = 2
+device_id = 3
 torch.manual_seed(2019)
 torch.cuda.set_device(device_id)
 
