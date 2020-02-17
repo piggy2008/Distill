@@ -215,6 +215,11 @@ class Distill(nn.Module):
         up_size = (40, 40)
         if flag == 'single':
             feat_high_cur, feat_low_cur = self.head(cur)
+            hidden = torch.zeros_like(feat_high_cur).cuda()
+            for passing_round in range(self.iter):
+                hidden = self.ConvGRU(feat_high_cur, hidden)
+                if passing_round == self.iter - 1:
+                    feat_high_cur = self.readout(hidden, feat_high_cur)
 
             # feat_high_cur = self.relation(feat_high_cur, feat_high_cur)
             feat_high_cur = F.upsample(feat_high_cur, size=feat_low_cur.size()[2:], mode='bilinear', align_corners=True)
@@ -222,19 +227,19 @@ class Distill(nn.Module):
             
 #             feat_cur = self.generate_attention(feat_high_cur, feat_low_cur, self.mutual_self)
             predict0 = self.predict0(feat_high_cur)
-#             predict1 = self.predict1(torch.cat((predict0, feat_low_cur), 1)) + predict0
-#             predict2 = self.predict2(torch.cat((predict1, feat_high_cur), 1)) + predict1
+            predict1 = self.predict1(torch.cat((predict0, feat_low_cur), 1)) + predict0
+            predict2 = self.predict2(torch.cat((predict1, feat_high_cur), 1)) + predict1
             # predict3 = self.predict3(torch.cat((predict2, feat_low_cur), 1)) + predict2
 
             predict0 = F.upsample(predict0, size=cur.size()[2:], mode='bilinear', align_corners=True)
-#             predict1 = F.upsample(predict1, size=cur.size()[2:], mode='bilinear', align_corners=True)
-#             predict2 = F.upsample(predict2, size=cur.size()[2:], mode='bilinear', align_corners=True)
+            predict1 = F.upsample(predict1, size=cur.size()[2:], mode='bilinear', align_corners=True)
+            predict2 = F.upsample(predict2, size=cur.size()[2:], mode='bilinear', align_corners=True)
             # predict3 = F.upsample(predict3, size=cur.size()[2:], mode='bilinear', align_corners=True)
 
             if self.training:
-                return predict0
+                return predict0, predict1, predict2
             else:
-                return F.sigmoid(predict0)
+                return F.sigmoid(predict2)
         else:
             feat_high_pre, feat_low_pre = self.head(pre)
             feat_high_cur, feat_low_cur = self.head(cur)

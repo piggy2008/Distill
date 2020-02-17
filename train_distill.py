@@ -35,13 +35,13 @@ args = {
     'seq': True,
     'se_layer': False,
     'dilation': False,
-    'distillation': False,
+    'distillation': True,
     'L2': False,
     'KL': False,
     'iter_num': 80000,
     'iter_save': 10000,
-    'iter_start_seq': 0,
-    'train_batch_size': 6,
+    'iter_start_seq': 30000,
+    'train_batch_size': 8,
     'last_iter': 0,
     'lr': 1e-3,
     'lr_decay': 0.9,
@@ -156,8 +156,11 @@ def train(net, optimizer):
 
 
             if curr_iter < args['iter_start_seq']:
-                train_single(net, inputs, labels, criterion, optimizer, curr_iter)
+                # train_single(net, inputs, labels, criterion, optimizer, curr_iter)
+                # inputs1, inputs2 = torch.chunk(inputs, 2, 0)
+                # labels1, labels2 = torch.chunk(labels, 2, 0)
 
+                train_single(net, inputs, labels, criterion, optimizer, curr_iter)
             else:
 
                 if curr_iter % 3 == 1:
@@ -201,24 +204,24 @@ def train_single(net, inputs, labels, criterion, optimizer, curr_iter):
     labels = Variable(labels).cuda()
 
     optimizer.zero_grad()
-    # outputs0, outputs1, outputs2 = net(inputs, inputs, inputs, flag='single')
-    outputs0 = net(inputs, inputs, inputs, flag='single')
+    outputs0, outputs1, outputs2 = net(inputs, inputs, inputs, flag='single')
+    # outputs0 = net(inputs, inputs, inputs, flag='single')
     loss0 = criterion(outputs0, labels)
-    # loss1 = criterion(outputs1, labels)
-    # loss2 = criterion(outputs2, labels)
+    loss1 = criterion(outputs1, labels)
+    loss2 = criterion(outputs2, labels)
 
-    # if args['distillation']:
-    #     loss02 = criterion(outputs0, F.sigmoid(outputs2))
-    #     loss12 = criterion(outputs1, F.sigmoid(outputs2))
-    #
-    #     total_loss = loss0 + loss1 + loss2 + 0.5 * loss02 + 0.5 * loss12
-    # else:
-    #     total_loss = loss0 + loss1 + loss2
-    total_loss = loss0
+    if args['distillation']:
+        loss02 = criterion(outputs0, F.sigmoid(outputs2))
+        loss12 = criterion(outputs1, F.sigmoid(outputs2))
+
+        total_loss = loss0 + loss1 + loss2 + 0.5 * loss02 + 0.5 * loss12
+    else:
+        total_loss = loss0 + loss1 + loss2
+    # total_loss = loss0
     total_loss.backward()
     optimizer.step()
 
-    print_log(total_loss, loss0, loss0, loss0, args['train_batch_size'], curr_iter, optimizer)
+    print_log(total_loss, loss0, loss1, loss2, args['train_batch_size'], curr_iter, optimizer)
 
     return
 
@@ -240,17 +243,35 @@ def train_seq(net, previous_frame, previous_gt, current_frame, current_gt, next_
     loss0_pre = criterion(predict0_pre, previous_gt)
     loss1_pre = criterion(predict1_pre, previous_gt)
     loss2_pre = criterion(predict2_pre, previous_gt)
-    total_loss_pre = loss0_pre + loss1_pre + loss2_pre
+
+    if args['distillation']:
+        loss2_pre_cur = criterion(predict2_pre, F.sigmoid(predict2_cur))
+        loss2_pre_next = criterion(predict2_pre, F.sigmoid(predict2_next))
+        total_loss_pre = loss0_pre + loss1_pre + 0.5 * loss2_pre + 0.5 * (loss2_pre_cur + loss2_pre_next)
+    else:
+        total_loss_pre = loss0_pre + loss1_pre + loss2_pre
     
     loss0_cur = criterion(predict0_cur, current_gt)
     loss1_cur = criterion(predict1_cur, current_gt)
     loss2_cur = criterion(predict2_cur, current_gt)
-    total_loss_cur = loss0_cur + loss1_cur + loss2_cur
+
+    if args['distillation']:
+        loss2_cur_pre = criterion(predict2_cur, F.sigmoid(predict2_pre))
+        loss2_cur_next = criterion(predict2_cur, F.sigmoid(predict2_next))
+        total_loss_cur = loss0_cur + loss1_cur + 0.5 * loss2_cur + 0.5 * (loss2_cur_pre + loss2_cur_next)
+    else:
+        total_loss_cur = loss0_cur + loss1_cur + loss2_cur
     
     loss0_next = criterion(predict0_next, next_gt)
     loss1_next = criterion(predict1_next, next_gt)
     loss2_next = criterion(predict2_next, next_gt)
-    total_loss_next = loss0_next + loss1_next + loss2_next
+
+    if args['distillation']:
+        loss2_next_pre = criterion(predict2_next, F.sigmoid(predict2_pre))
+        loss2_next_cur = criterion(predict2_next, F.sigmoid(predict2_cur))
+        total_loss_next = loss0_next + loss1_next + 0.5 * loss2_next + 0.5 * (loss2_next_pre + loss2_next_cur)
+    else:
+        total_loss_next = loss0_next + loss1_next + loss2_next
 
     total_loss = total_loss_pre + total_loss_cur + total_loss_next
     total_loss.backward()
