@@ -252,43 +252,43 @@ class Distill(nn.Module):
             result_pres = torch.zeros(b, 256, w, h).cuda()
             result_curs = torch.zeros(b, 256, w, h).cuda()
             result_nexts = torch.zeros(b, 256, w, h).cuda()
-            for ii in range(b):
-                pre_single = feat_high_pre[ii, :, :, :][None].contiguous().clone()
-                cur_single = feat_high_cur[ii, :, :, :][None].contiguous().clone()
-                next_single = feat_high_next[ii, :, :, :][None].contiguous().clone()
-                for passing_round in range(self.iter):
 
-                    # attention_pre = self.conv_fusion(torch.cat([self.generate_attention(pre_single, cur_single, self.mutual_pre),
-                    #                          self.generate_attention(pre_single, next_single, self.mutual_pre)],1)) #message passing with concat operation
-                    # attention_cur = self.conv_fusion(torch.cat([self.generate_attention(cur_single, pre_single, self.mutual_cur),
-                    #                         self.generate_attention(cur_single, next_single, self.mutual_cur)],1))
-                    # attention_next = self.conv_fusion(torch.cat([self.generate_attention(next_single, pre_single, self.mutual_next),
-                    #                         self.generate_attention(next_single, cur_single, self.mutual_next)],1))
+            pre_single = feat_high_pre.clone()
+            cur_single = feat_high_cur.clone()
+            next_single = feat_high_next.clone()
+            for passing_round in range(self.iter):
 
-                    attention_pre = self.conv_fusion(
-                        torch.cat([pre_single * cur_single,
-                                   pre_single * next_single], 1))  # message passing with concat operation
-                    attention_cur = self.conv_fusion(
-                        torch.cat([cur_single * pre_single,
-                                   cur_single * next_single], 1))
-                    attention_next = self.conv_fusion(
-                        torch.cat([next_single * pre_single,
-                                   next_single * cur_single], 1))
+                attention_pre = self.conv_fusion(torch.cat([self.generate_attention(pre_single, cur_single, self.mutual_pre),
+                                         self.generate_attention(pre_single, next_single, self.mutual_pre)],1)) #message passing with concat operation
+                attention_cur = self.conv_fusion(torch.cat([self.generate_attention(cur_single, pre_single, self.mutual_cur),
+                                        self.generate_attention(cur_single, next_single, self.mutual_cur)],1))
+                attention_next = self.conv_fusion(torch.cat([self.generate_attention(next_single, pre_single, self.mutual_next),
+                                        self.generate_attention(next_single, cur_single, self.mutual_next)],1))
 
-                    h_pre = self.ConvGRU(attention_pre, pre_single)
-                    #h_v1 = self.relu_m(h_v1)
-                    h_cur = self.ConvGRU(attention_cur, cur_single)
-                    #h_v2 = self.relu_m(h_v2)
-                    h_next = self.ConvGRU(attention_next, next_single)
-                    #h_v3 = self.relu_m(h_v3)
-                    pre_single = h_pre.clone()
-                    cur_single = h_cur.clone()
-                    next_single = h_next.clone()
+                # attention_pre = self.conv_fusion(
+                #     torch.cat([pre_single * cur_single,
+                #                pre_single * next_single], 1))  # message passing with concat operation
+                # attention_cur = self.conv_fusion(
+                #     torch.cat([cur_single * pre_single,
+                #                cur_single * next_single], 1))
+                # attention_next = self.conv_fusion(
+                #     torch.cat([next_single * pre_single,
+                #                next_single * cur_single], 1))
 
-                    if passing_round == self.iter - 1:
-                        result_pres[ii, :, :, :] = self.readout(h_pre, feat_high_pre[ii, :, :, :][None].contiguous())
-                        result_curs[ii, :, :, :] = self.readout(h_cur, feat_high_cur[ii, :, :, :][None].contiguous())
-                        result_nexts[ii, :, :, :] = self.readout(h_next, feat_high_next[ii, :, :, :][None].contiguous())
+                h_pre = self.ConvGRU(attention_pre, pre_single)
+                #h_v1 = self.relu_m(h_v1)
+                h_cur = self.ConvGRU(attention_cur, cur_single)
+                #h_v2 = self.relu_m(h_v2)
+                h_next = self.ConvGRU(attention_next, next_single)
+                #h_v3 = self.relu_m(h_v3)
+                pre_single = h_pre.clone()
+                cur_single = h_cur.clone()
+                next_single = h_next.clone()
+
+                if passing_round == self.iter - 1:
+                    result_pres = self.readout(h_pre, feat_high_pre)
+                    result_curs = self.readout(h_cur, feat_high_cur)
+                    result_nexts = self.readout(h_next, feat_high_next)
 
             result_pres = F.upsample(result_pres, size=feat_low_pre.size()[2:], mode='bilinear', align_corners=True)
             result_curs = F.upsample(result_curs, size=feat_low_cur.size()[2:], mode='bilinear', align_corners=True)
@@ -324,6 +324,6 @@ class Distill(nn.Module):
 
             if self.training:
                 return predict0_pre, predict0_cur, predict0_next, predict1_pre, predict1_cur, predict1_next, \
-                       predict2_pre, predict2_cur, predict2_next
+                       predict2_pre, predict2_cur, predict2_next, result_pres, result_curs, result_nexts
             else:
                 return F.sigmoid(predict2_cur)

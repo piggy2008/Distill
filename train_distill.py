@@ -20,7 +20,7 @@ from utils_mine import load_part_of_model
 import random
 
 cudnn.benchmark = True
-device_id = 1
+device_id = 2
 torch.manual_seed(2019)
 torch.cuda.set_device(device_id)
 
@@ -237,7 +237,8 @@ def train_seq(net, previous_frame, previous_gt, current_frame, current_gt, next_
     optimizer.zero_grad()
     
     predict0_pre, predict0_cur, predict0_next, predict1_pre, predict1_cur, predict1_next, \
-    predict2_pre, predict2_cur, predict2_next = net(previous_frame, current_frame, next_frame, 'seq')
+    predict2_pre, predict2_cur, predict2_next, \
+    result_pres, result_curs, result_nexts = net(previous_frame, current_frame, next_frame, 'seq')
     # predict0_pre, predict0_cur, predict0_next = net(previous_frame, current_frame, next_frame, 'seq')
 
     loss0_pre = criterion(predict0_pre, previous_gt)
@@ -245,9 +246,12 @@ def train_seq(net, previous_frame, previous_gt, current_frame, current_gt, next_
     loss2_pre = criterion(predict2_pre, previous_gt)
 
     if args['distillation']:
-        loss2_pre_cur = criterion(predict2_pre, F.sigmoid(predict2_cur))
-        loss2_pre_next = criterion(predict2_pre, F.sigmoid(predict2_next))
-        total_loss_pre = loss0_pre + loss1_pre + 0.5 * loss2_pre + 0.5 * (loss2_pre_cur + loss2_pre_next)
+        loss0_pre_cur = criterion(predict0_pre, F.sigmoid(predict2_cur))
+        loss1_pre_cur = criterion(predict1_pre, F.sigmoid(predict2_cur))
+        # loss0_pre_next = criterion(predict0_pre, F.sigmoid(predict2_next))
+        # loss1_pre_next = criterion(predict1_pre, F.sigmoid(predict2_next))
+        total_loss_pre = loss0_pre + loss1_pre + 1 * loss2_pre + \
+                         0.5 * (loss0_pre_cur + loss1_pre_cur)
     else:
         total_loss_pre = loss0_pre + loss1_pre + loss2_pre
     
@@ -256,9 +260,12 @@ def train_seq(net, previous_frame, previous_gt, current_frame, current_gt, next_
     loss2_cur = criterion(predict2_cur, current_gt)
 
     if args['distillation']:
-        loss2_cur_pre = criterion(predict2_cur, F.sigmoid(predict2_pre))
-        loss2_cur_next = criterion(predict2_cur, F.sigmoid(predict2_next))
-        total_loss_cur = loss0_cur + loss1_cur + 0.5 * loss2_cur + 0.5 * (loss2_cur_pre + loss2_cur_next)
+        # loss0_cur_pre = criterion(predict0_cur, F.sigmoid(predict2_pre))
+        # loss1_cur_pre = criterion(predict1_cur, F.sigmoid(predict2_pre))
+        loss0_cur_next = criterion(predict0_cur, F.sigmoid(predict2_next))
+        loss1_cur_next = criterion(predict1_cur, F.sigmoid(predict2_next))
+        total_loss_cur = loss0_cur + loss1_cur + 1 * loss2_cur + \
+                         0.5 * (loss0_cur_next + loss1_cur_next)
     else:
         total_loss_cur = loss0_cur + loss1_cur + loss2_cur
     
@@ -267,13 +274,33 @@ def train_seq(net, previous_frame, previous_gt, current_frame, current_gt, next_
     loss2_next = criterion(predict2_next, next_gt)
 
     if args['distillation']:
-        loss2_next_pre = criterion(predict2_next, F.sigmoid(predict2_pre))
-        loss2_next_cur = criterion(predict2_next, F.sigmoid(predict2_cur))
-        total_loss_next = loss0_next + loss1_next + 0.5 * loss2_next + 0.5 * (loss2_next_pre + loss2_next_cur)
+        loss0_next_pre = criterion(predict0_next, F.sigmoid(predict2_pre))
+        loss1_next_pre = criterion(predict1_next, F.sigmoid(predict2_pre))
+        # loss0_next_cur = criterion(predict0_next, F.sigmoid(predict2_cur))
+        # loss1_next_cur = criterion(predict1_next, F.sigmoid(predict2_cur))
+        total_loss_next = loss0_next + loss1_next + 1 * loss2_next + \
+                          0.5 * (loss0_next_pre + loss1_next_pre)
     else:
         total_loss_next = loss0_next + loss1_next + loss2_next
 
+    if args['KL']:
+        loss_kl = criterion_kl(F.sigmoid(result_pres), F.sigmoid(result_curs)) \
+                  + criterion_kl(F.sigmoid(result_pres), F.sigmoid(result_nexts)) \
+                  + criterion_kl(F.sigmoid(result_curs), F.sigmoid(result_nexts))
+
+    if args['L2']:
+        loss_l2 = criterion_l2(F.sigmoid(result_pres), F.sigmoid(result_curs)) \
+                  + criterion_l2(F.sigmoid(result_pres), F.sigmoid(result_nexts)) \
+                  + criterion_l2(F.sigmoid(result_curs), F.sigmoid(result_nexts))
+
     total_loss = total_loss_pre + total_loss_cur + total_loss_next
+
+    if args['KL']:
+        total_loss = total_loss + 10 * loss_kl
+
+    if args['L2']:
+        total_loss = total_loss + 10 * loss_l2
+
     total_loss.backward()
     optimizer.step()
 
